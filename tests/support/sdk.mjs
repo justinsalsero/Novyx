@@ -123,7 +123,12 @@ export const ai = {
 };
 export const secrets = {
   async listSecretNames() {
-    return [];
+    return Object.keys(globalThis.__novyxTestSecrets || {});
+  },
+  async readSecret(name) {
+    const value = globalThis.__novyxTestSecrets?.[name];
+    if (!value) throw new Error('Missing test secret');
+    return value;
   },
 };
 export const notifications = Object.fromEntries(

@@ -1,6 +1,6 @@
-# Novyx 4.0.1
+# Novyx 4.0.2
 
-A personal planning workspace guided by Nyx. This release repairs financial calculations, scheduling, backups and assistant follow-through in the existing Novyx deployment.
+A personal planning workspace guided by Nyx. Version 4.0.2 adds a read-only Google Calendar authorization and sync workflow on top of the 4.0.1 reliability repairs. Activation requires the app owner’s Google OAuth client and a real-account pilot.
 
 ## Current architecture
 
@@ -11,11 +11,18 @@ A personal planning workspace guided by Nyx. This release repairs financial calc
 - New item saves use stable request IDs. Assistant approvals and receipt-to-transaction saves use database transactions. Unknown outcomes are reconciled with the same request identity, not blindly repeated.
 - Assistant context includes up to ten prior conversation messages and a bounded workspace snapshot. The UI explicitly flags partial AI snapshots. Dashboard totals and exports load all pages across separate requests.
 
-## Changes in this release
+## Changes in 4.0.2
+
+- Authenticated OAuth completion with a fixed redirect URI, one-time state, PKCE and server-only encrypted tokens.
+- Primary-calendar imports in resumable pages, explicit manual sync, token refresh, disconnect and provider revocation handling.
+- Busy/free, cancelled, overnight and all-day event support in planning. Connected Google appointments are read-only; disconnected copies become inactive snapshots.
+- [Owner setup and real-account acceptance checklist](docs/google-calendar-setup.md).
+
+## Reliability fixes retained from 4.0.1
 
 - Data-derived spending charts and consistent subscription totals.
 - Calendar-month recurrence anchored to the original date, Vancouver date boundaries and explicit non-amortizing debt outcomes. Debt projections assume fixed total payments, with freed payments rolled forward.
-- Calendar/planner compatibility across eventTime, startTime and time fields. New events use eventTime. All-day or untimed events require review before planning.
+- Calendar/planner compatibility across eventTime, startTime and time fields. New events use eventTime. Explicit all-day events block their date range; manual events without a usable time require review before planning.
 - Reviewable assistant task/event proposals with Approve & save and Dismiss. No external messages or payments are executed.
 - Full version-4 backups containing records, profile, explicit memories and pending connection requests. Temporary drafts, authentication tokens, notification subscriptions, per-device voice settings and session conversations are not exported. Version 2/3 record backups are accepted.
 - Repeatable restore pages keep existing matching records. Imports do not overwrite existing records; the user explicitly confirms any profile replacement. A failed import may have confirmed partial progress, reported in the UI; replaying the same source records is safe.
@@ -23,15 +30,15 @@ A personal planning workspace guided by Nyx. This release repairs financial calc
 
 ## Development and verification
 
-Use Node 22.6 or later; Node 24 is recommended. Run `npm ci`, then `npm test` for domain and backend regression tests. The backend tests use a test-only SDK double and do not prove cloud SDK behavior. Real deployment builds, SDK type checks and browser workflows are verified through AppDeploy.
+Use Node 22.6 or later; Node 24 is recommended. Run `npm ci`, then `npm test` for domain and backend regression tests. The backend tests use a test-only SDK double and do not prove cloud SDK behavior. Deployment builds and runtime checks use AppDeploy. Browser workflow definitions are supplied in tests/tests.json; Google-account acceptance remains pending until OAuth credentials are configured.
 
-`tests/tests.json` defines five deployed browser workflows. `tests/domain.test.mjs` covers financial/date calculations and validation. `tests/backend.test.mjs` covers authentication boundaries, pagination including legacy records, idempotent saves, explicit approvals, event conflicts, imports and atomic receipts.
+`tests/google-calendar.test.mjs` adds Calendar OAuth/sync regression tests. `tests/tests.json` defines five deployed browser workflows. `tests/domain.test.mjs` covers financial/date calculations and validation. `tests/backend.test.mjs` covers authentication boundaries, pagination including legacy records, idempotent saves, explicit approvals, event conflicts, imports and atomic receipts.
 
 For a local Vite build the AppDeploy runtime modules must be supplied by the host. A compile-only check can externalize `@appdeploy/client`; that does not create a locally functioning app.
 
 ## Remaining external setup and limits
 
-Gmail, Outlook, external calendar synchronization, bank linking and paid subscription billing are not implemented or active. The setup forms only record requests. Supplying credentials alone would not make those integrations work: authorization callbacks, token lifecycle, provider sync, webhook handling and service-specific testing are still required.
+The Google Calendar connector is implemented but not activated until the owner configures credentials and a user grants access. It supports one account’s primary calendar with manual, read-only synchronization. Gmail, Outlook, bank linking and paid subscription billing remain unimplemented; their forms only record requests. Calendar webhook/background sync and write-back are not part of this release.
 
 Voice input relies on browser speech recognition. Voice output uses installed device voices or an optional locally downloaded Kokoro model. The large model is dynamically loaded only when neural speech is enabled. iPhone neural playback and latency require real-device verification; text remains available.
 

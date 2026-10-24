@@ -14,7 +14,9 @@ await build({
   platform: 'node',
   alias: { '@appdeploy/sdk': resolve('tests/support/sdk.mjs') },
 });
-const { handler } = await import(pathToFileURL(resolve('.local/backend-test.mjs')).href);
+const { handler } = await import(
+  pathToFileURL(resolve('.local/backend-test.mjs')).href
+);
 const userA = { userId: 'test-user-a' };
 const userB = { userId: 'test-user-b' };
 const call = (method, path, body, user = userA, query) =>
@@ -214,4 +216,47 @@ test('receipt save atomically creates a receipt and transaction exactly once', a
   const data = (await call('GET', '/api/dashboard')).data;
   assert.equal(data.receipts.length, 1);
   assert.equal(data.transactions.length, 1);
+});
+
+test('connected provider events are read-only and provider token tables are not generic records', async () => {
+  const { createHash } = await import('node:crypto');
+  const userKey = createHash('sha256')
+    .update(userA.userId)
+    .digest('hex')
+    .slice(0, 32);
+  globalThis.__novyxTestStore.set(
+    'nyx_' + userKey + '_events',
+    new Map([
+      [
+        'v4_google_fixture',
+        {
+          id: 'v4_google_fixture',
+          title: 'Imported appointment',
+          date: '2030-01-15',
+          provider: 'google-calendar',
+          externalActive: true,
+        },
+      ],
+    ]),
+  );
+  assert.equal(
+    (
+      await call('PUT', '/api/items/events/v4_google_fixture', {
+        title: 'Changed',
+      })
+    ).statusCode,
+    409,
+  );
+  assert.equal(
+    (await call('DELETE', '/api/items/events/v4_google_fixture')).statusCode,
+    409,
+  );
+  assert.equal(
+    (await call('GET', '/api/records/google_connection')).statusCode,
+    400,
+  );
+  assert.equal(
+    (await call('GET', '/api/dashboard', undefined, userB)).data.events.length,
+    0,
+  );
 });

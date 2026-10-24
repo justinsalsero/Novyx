@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { api } from '@appdeploy/client';
 import { CalendarClock } from 'lucide-react';
 import {
-  eventMinutes,
+  eventInterval,
   localDay,
   minutes,
   validDate,
@@ -26,15 +26,10 @@ function conflicts(
   start: number,
   end: number,
 ) {
-  return events
-    .filter((event) => event.date === date)
-    .some((event) => {
-      const time = eventMinutes(event);
-      return (
-        time === null ||
-        (start < time + Number(event.duration || 60) && end > time)
-      );
-    });
+  return events.some((event) => {
+    const interval = eventInterval(event, date);
+    return interval && start < interval.end && end > interval.start;
+  });
 }
 
 export default function NyxPlanner() {
@@ -67,11 +62,7 @@ export default function NyxPlanner() {
           ),
         )
         .slice(0, 15);
-      if (
-        events.some(
-          (event) => event.date === date && eventMinutes(event) === null,
-        )
-      ) {
+      if (events.some((event) => eventInterval(event, date)?.untimed)) {
         setNotice(
           'An all-day event or an event without a start time needs review. Update it in Calendar before scheduling focus blocks.',
         );

@@ -1,13 +1,13 @@
 {
   "name": "novyx",
   "private": true,
-  "version": "4.0.1",
+  "version": "4.0.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --experimental-strip-types --test tests/domain.test.mjs tests/backend.test.mjs"
+    "test": "node --experimental-strip-types --test tests/domain.test.mjs tests/backend.test.mjs tests/google-calendar.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.469.0",

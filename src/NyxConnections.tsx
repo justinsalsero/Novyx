@@ -1,3 +1,4 @@
+import GoogleCalendarConnection from './GoogleCalendarConnection';
 import { useEffect, useState } from 'react';
 import { api } from '@appdeploy/client';
 import { allRecords } from './data';
@@ -67,6 +68,7 @@ export default function NyxConnections() {
         margin: '12px 0',
       }}
     >
+      <GoogleCalendarConnection />
       <h3>
         <Link2 size={18} /> Multiple account connection centre
       </h3>

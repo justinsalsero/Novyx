@@ -1,3 +1,4 @@
+import { googleCalendarRoutes } from './google-calendar';
 import { randomUUID } from 'node:crypto';
 import {
   summarize,
@@ -5,6 +6,8 @@ import {
   validDate,
   localDay,
   eventMinutes,
+  eventInterval,
+  upcomingEvent,
   type RecordItem,
 } from '../shared/domain';
 import {
@@ -157,6 +160,7 @@ export const weeklyReportNotification = async () => {
 };
 
 const routes = {
+  ...googleCalendarRoutes,
   'GET /api/profile': [
     requireAuth(),
     async (ctx) => {
@@ -246,7 +250,7 @@ const routes = {
     requireAuth(),
     async (ctx) => {
       const [ok] = await db.delete(
-        'personal:' + ctx.user!.userId + ':connection_requests',
+        itemTable(ctx.user!.userId, 'connection_requests', ctx.params.id),
         [ctx.params.id],
       );
       return ok ? json({ ok: true }) : error('Request not found', 404);
@@ -260,7 +264,7 @@ const routes = {
         names.includes('GOOGLE_CLIENT_ID') &&
         names.includes('GOOGLE_CLIENT_SECRET');
       return json({
-        gmailConfigured: googleReady,
+        gmailConfigured: false,
         calendarConfigured: googleReady,
         bankConfigured:
           names.includes('PLAID_CLIENT_ID') && names.includes('PLAID_SECRET'),
@@ -299,6 +303,11 @@ const routes = {
       ]);
       const existing = records[0];
       if (!existing) return error('Item not found', 404);
+      if (existing.provider === 'google-calendar')
+        return error(
+          'Google appointments are read-only. Edit the original event in Google Calendar and sync again.',
+          409,
+        );
       const patch = ctx.body as Record<string, unknown>;
       const validated = checkedRecord(ctx.params.kind, {
         ...existing,
@@ -331,10 +340,19 @@ const routes = {
     requireAuth(),
     async (ctx) => {
       if (!isKind(ctx.params.kind)) return error('Invalid item type', 400);
-      const deleted = await db.delete(
-        itemTable(ctx.user!.userId, ctx.params.kind, ctx.params.id),
-        [ctx.params.id],
-      );
+      const table = itemTable(ctx.user!.userId, ctx.params.kind, ctx.params.id);
+      const [existing] = await db.get<RecordItem>(table, [ctx.params.id], {
+        consistent: true,
+      });
+      if (
+        existing?.provider === 'google-calendar' &&
+        existing.externalActive !== false
+      )
+        return error(
+          'Connected Google appointments are read-only. Disconnect first to archive imported copies.',
+          409,
+        );
+      const deleted = await db.delete(table, [ctx.params.id]);
       if (!deleted[0]) return error('Unable to delete item', 500);
       return json({ ok: true });
     },
@@ -358,7 +376,7 @@ const routes = {
           dueDate: String(t.dueDate || ''),
         }));
       const upcomingEvents = data.events
-        .filter((e) => String(e.date || '') >= today)
+        .filter((e) => upcomingEvent(e, today))
         .sort((a, b) =>
           String(a.date || '').localeCompare(String(b.date || '')),
         )
@@ -453,8 +471,14 @@ const routes = {
       let contextBytes = 0;
       for (const kind of allowedKinds) {
         contextRecords[kind] = [];
-        if (current[kind].length > 15) context.recordsPartial = true;
-        for (const record of current[kind].slice(0, 15)) {
+        const rows =
+          kind === 'events'
+            ? current[kind]
+                .filter((event) => upcomingEvent(event))
+                .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+            : current[kind];
+        if (rows.length > 15) context.recordsPartial = true;
+        for (const record of rows.slice(0, 15)) {
           const compact = Object.fromEntries(
             Object.entries(record)
               .filter(([, value]) =>
@@ -613,13 +637,10 @@ const routes = {
         if (start === null) return error('Choose an event time first.', 400);
         const end = start + Number(data.duration || 60);
         if (
-          calendar.items.some(
-            (event) =>
-              event.date === data.date &&
-              (eventMinutes(event) === null ||
-                (start < eventMinutes(event)! + Number(event.duration || 60) &&
-                  end > eventMinutes(event)!)),
-          )
+          calendar.items.some((event) => {
+            const interval = eventInterval(event, String(data.date));
+            return interval && start < interval.end && end > interval.start;
+          })
         )
           return error(
             'This time conflicts with an event, or an all-day event needs review. Choose another time.',

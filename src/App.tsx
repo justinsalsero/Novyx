@@ -1,9 +1,11 @@
+import { hasGoogleCallback } from './googleCallback';
 import {
   kinds,
   expandCashflow,
   simulateDebt as debtSimulation,
   monthlySubscription,
   localDay,
+  upcomingEvent,
   validateItem,
   type RecordItem,
 } from '../shared/domain';
@@ -694,6 +696,11 @@ function App() {
     }
   };
 
+  useEffect(() => {
+    if (user && profile?.completed && hasGoogleCallback())
+      setTab('connections');
+  }, [user?.userId, profile?.completed]);
+
   const localSearch = searchQuery.trim().toLowerCase();
   const searchMatches = localSearch
     ? [
@@ -1074,6 +1081,10 @@ function App() {
   };
 
   const showProviderSetup = (provider: 'gmail' | 'bank' | 'calendar') => {
+    if (provider === 'calendar') {
+      setTab('connections');
+      return;
+    }
     const label =
       provider === 'gmail'
         ? 'Email sync'
@@ -1190,7 +1201,7 @@ function App() {
   const upcomingEvents = useMemo(() => {
     const today = localDay();
     return [...data.events]
-      .filter((item) => String(item.date || '') >= today)
+      .filter((item) => upcomingEvent(item, today))
       .sort((a, b) =>
         (String(a.date) + String(a.eventTime || '')).localeCompare(
           String(b.date) + String(b.eventTime || ''),
@@ -2032,11 +2043,15 @@ function App() {
                       <strong>{item.title}</strong>
                       <span>
                         {item.eventTime || 'All day'} ·{' '}
+                        {item.provider === 'google-calendar'
+                          ? 'Google Calendar · read-only'
+                          : ''}{' '}
                         {item.eventType || 'Event'}
                       </span>
                     </div>
                     <button
                       className="danger-btn"
+                      disabled={item.provider === 'google-calendar'}
                       onClick={() => void deleteItem('events', item.id)}
                     >
                       <Trash2 size={15} />

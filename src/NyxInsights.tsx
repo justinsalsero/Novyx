@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { loadWorkspace } from './data';
-import { localDay } from '../shared/domain';
+import { localDay, upcomingEvent } from '../shared/domain';
 import { CalendarDays, Wallet } from 'lucide-react';
 type Insights = {
   asOf: string;
@@ -69,9 +69,7 @@ export default function NyxInsights() {
             .filter((item: { done?: boolean }) => !item.done)
             .slice(0, 5),
           events: workspace.events
-            .filter(
-              (item: { date?: string }) => item.date && item.date >= today,
-            )
+            .filter((item: { date?: string }) => upcomingEvent(item, today))
             .slice(0, 5),
           uncompletedTaskCount: workspace.summary.openTasks,
         },

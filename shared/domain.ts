@@ -47,6 +47,41 @@ export function eventMinutes(item: RecordItem) {
   return minutes(item.eventTime || item.startTime || item.time);
 }
 
+export function activeEvent(item: RecordItem) {
+  return (
+    item.externalActive !== false &&
+    !['cancelled', 'canceled'].includes(String(item.status || '').toLowerCase())
+  );
+}
+
+export function eventInterval(item: RecordItem, day: string) {
+  if (!activeEvent(item) || item.busy === false || !validDate(item.date))
+    return null;
+  const endDate = validDate(item.endDate) ? item.endDate : item.date;
+  if (day < item.date || day > endDate) return null;
+  if (item.allDay === true) {
+    if (item.endDate && day >= endDate) return null;
+    return { start: 0, end: 1440, untimed: false };
+  }
+  const startTime = eventMinutes(item);
+  if (startTime === null)
+    return day === item.date ? { start: 0, end: 1440, untimed: true } : null;
+  const start = day === item.date ? startTime : 0;
+  const explicitEnd = minutes(item.endTime);
+  const end =
+    day < endDate
+      ? 1440
+      : (explicitEnd ??
+        Math.min(1440, startTime + Number(item.duration || 60)));
+  return end > start ? { start, end, untimed: false } : null;
+}
+
+export function upcomingEvent(item: RecordItem, today = localDay()) {
+  if (item.allDay === true && item.endDate && String(item.endDate) <= today)
+    return false;
+  return activeEvent(item) && String(item.endDate || item.date || '') >= today;
+}
+
 export function monthlySubscription(items: RecordItem[]) {
   return items
     .filter((item) => item.status !== 'Cancelled')
@@ -291,7 +326,7 @@ export function validateItem(kind: Kind, input: unknown) {
       throw new Error('Invalid ' + key + '.');
     record[key] = raw[key];
   }
-  for (const key of ['date', 'dueDate', 'transactionDate']) {
+  for (const key of ['date', 'endDate', 'dueDate', 'transactionDate']) {
     if (raw[key] === undefined || raw[key] === '') continue;
     if (!validDate(raw[key])) throw new Error('Invalid ' + key + '.');
     record[key] = raw[key];
@@ -301,11 +336,21 @@ export function validateItem(kind: Kind, input: unknown) {
     if (minutes(raw[key]) === null) throw new Error('Invalid event time.');
     record.eventTime = raw[key];
   }
-  for (const key of ['done', 'recurring']) {
+  if (raw.endTime !== undefined && raw.endTime !== '') {
+    if (minutes(raw.endTime) === null) throw new Error('Invalid end time.');
+    record.endTime = raw.endTime;
+  }
+  for (const key of ['done', 'recurring', 'allDay', 'busy', 'externalActive']) {
     if (raw[key] === undefined) continue;
     if (typeof raw[key] !== 'boolean') throw new Error('Invalid ' + key + '.');
     record[key] = raw[key];
   }
+  if (
+    record.endDate &&
+    record.date &&
+    String(record.endDate) < String(record.date)
+  )
+    throw new Error('Invalid event end date.');
   const required =
     kind === 'clients' || kind === 'invoices'
       ? 'client'
@@ -346,6 +391,7 @@ export function validateItem(kind: Kind, input: unknown) {
   if (
     kind === 'events' &&
     record.eventTime &&
+    (!record.endDate || record.endDate === record.date) &&
     eventMinutes(record)! + Number(record.duration || 60) > 1440
   )
     throw new Error('Event must end before midnight.');

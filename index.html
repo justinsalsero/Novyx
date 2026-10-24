@@ -2,6 +2,35 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="referrer" content="no-referrer" />
+    <script>
+      (() => {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('nyx_google') !== '1') return;
+        window.__nyxGoogleCallback = {
+          code: url.searchParams.get('code') || '',
+          state: url.searchParams.get('state') || '',
+          error: url.searchParams.get('error') || '',
+        };
+        for (const key of [
+          'nyx_google',
+          'code',
+          'state',
+          'error',
+          'scope',
+          'authuser',
+          'prompt',
+          'hd',
+          'iss',
+        ])
+          url.searchParams.delete(key);
+        window.history.replaceState(
+          null,
+          '',
+          url.pathname + url.search + url.hash,
+        );
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Novyx 4.0 — Guided by Nyx</title>
     <meta name="theme-color" content="#07132e" />
