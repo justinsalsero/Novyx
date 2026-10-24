@@ -1,0 +1,14 @@
+{
+  "methods": ["google", "apple", "x", "email"],
+  "headline": "Welcome to Novyx 4.0",
+  "subtitle": "Sign in to meet Nyx and set up your private command centre",
+  "style": {
+    "mode": "dark",
+    "accentColor": "#55D4FF",
+    "backgroundColor": "#050812",
+    "panelColor": "#0A111F",
+    "textColor": "#EEF4FF",
+    "fontFamily": "Inter, system-ui, sans-serif",
+    "borderRadius": 18
+  }
+}

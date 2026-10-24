@@ -1,0 +1,16 @@
+import { useMemo, useState } from 'react';
+import { Sparkles, AlertTriangle, CalendarDays, FileText, Target, CircleDollarSign } from 'lucide-react';
+type Item={id:string;title?:string;date?:string;eventTime?:string;client?:string;amount?:number;dueDate?:string;status?:string;target?:number;current?:number;expected?:number};
+type Filter='All'|'Alerts'|'Opportunities'|'Goals';
+export default function NyxLive({data,onOpen,onRefresh,checkedAt}:{data:{events:Item[];invoices:Item[];income:Item[];goals:Item[];budgetAlerts:Array<{category:string;overBy:number}>};onOpen:(section:'calendar'|'bills'|'money'|'goals')=>void;onRefresh:()=>void;checkedAt:string;}){
+ const [filter,setFilter]=useState<Filter>('All');
+ const money=(n:number)=>new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(n);
+ const items=useMemo(()=>{const today=new Date().toISOString().slice(0,10);const rows:Array<{id:string;filter:Filter;label:string;detail:string;section:'calendar'|'bills'|'money'|'goals';icon:typeof Sparkles}>=[];
+ data.budgetAlerts.forEach((i,n)=>rows.push({id:'b'+n,filter:'Alerts',label:'Budget over target',detail:i.category+' · '+money(i.overBy)+' over',section:'money',icon:AlertTriangle}));
+ data.invoices.filter(i=>i.status!=='Paid'&&i.dueDate&&i.dueDate<today).forEach(i=>rows.push({id:'i'+i.id,filter:'Alerts',label:'Overdue invoice',detail:(i.client||'Client')+' · '+money(Number(i.amount||0)),section:'bills',icon:FileText}));
+ data.events.filter(i=>i.date&&i.date>=today).slice(0,8).forEach(i=>rows.push({id:'e'+i.id,filter:'All',label:i.title||'Upcoming event',detail:i.date||'',section:'calendar',icon:CalendarDays}));
+ data.income.filter(i=>i.status!=='Paid').slice(0,6).forEach(i=>rows.push({id:'o'+i.id,filter:'Opportunities',label:i.title||'Income opportunity',detail:money(Number(i.expected||0))+' potential',section:'money',icon:CircleDollarSign}));
+ data.goals.slice(0,6).forEach(i=>rows.push({id:'g'+i.id,filter:'Goals',label:i.title||'Goal',detail:(i.target?Math.round(100*Number(i.current||0)/i.target):0)+'% progress',section:'goals',icon:Target}));
+ return rows;},[data]);const visible=filter==='All'?items:items.filter(i=>i.filter===filter);
+ return <section className="nx31-live"><header className="nx31-live-head"><h2><Sparkles size={22}/> Nyx Live</h2><button onClick={onRefresh}>Refresh</button></header><p>Updates based on saved Novyx records. Bank and email monitoring requires an authorized connection.</p><div className="nx31-live-filters">{(['All','Alerts','Opportunities','Goals'] as Filter[]).map(f=><button className={filter===f?'active':''} aria-pressed={filter===f} key={f} onClick={()=>setFilter(f)}>{f}</button>)}</div><div className="nx31-live-list">{visible.length?visible.map(i=>{const Icon=i.icon;return <button key={i.id} onClick={()=>onOpen(i.section)}><Icon size={21}/><span><strong>{i.label}</strong><small>{i.detail}</small></span><b>›</b></button>}):<div className="nx31-empty">Nothing needs attention in this category.</div>}</div><small>Last checked {checkedAt||'when opened'}</small></section>;
+}

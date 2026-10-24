@@ -1,0 +1,14 @@
+[
+  {
+    "name": "nyx-daily-briefing",
+    "cron": "0 9 * * *",
+    "handler": "dailyBriefingNotification",
+    "timezone": "America/Vancouver"
+  },
+  {
+    "name": "nyx-weekly-report",
+    "cron": "0 9 * * 1",
+    "handler": "weeklyReportNotification",
+    "timezone": "America/Vancouver"
+  }
+]

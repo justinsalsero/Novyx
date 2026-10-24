@@ -1,0 +1,162 @@
+[
+  {
+    "name": "Track money and tasks with durable changes",
+    "sanity": true,
+    "viewport": "desktop",
+    "covers": [
+      "authentication",
+      "onboarding",
+      "tasks CRUD",
+      "transactions CRUD",
+      "data-derived spending chart",
+      "budgets",
+      "subscriptions",
+      "complete paginated dashboard totals",
+      "server input validation",
+      "deletion confirmation"
+    ],
+    "description": "Checks real saved records, accurate chart values, validation and persistence.",
+    "steps": [
+      "Sign in and complete onboarding if needed",
+      "Open Organize and create a task named QA Call Studio",
+      "Mark the task complete and reload to verify it stays complete",
+      "Open Money and add two transactions dated today: QA Groceries for 90 in Groceries and QA Transit for 10 in Transportation",
+      "Verify the recorded spending increases by 100 and the chart proportions reflect the saved categories",
+      "Add a monthly subscription QA Cancelled Plan for 20, cancel it, and verify its amount is excluded from the monthly subscription estimate",
+      "Attempt to save a transaction with a negative amount and verify it is rejected",
+      "Delete the QA Call Studio task, confirm, and reload"
+    ],
+    "expected": "Recorded changes persist, cancelled subscriptions are excluded, invalid amounts do not save, and the confirmed deleted task stays deleted."
+  },
+  {
+    "name": "Approve a focus plan that respects calendar appointments",
+    "viewport": "desktop",
+    "covers": [
+      "calendar eventTime compatibility",
+      "daily focus planner",
+      "calendar conflict avoidance",
+      "draft consent",
+      "canonical saved event times",
+      "goals",
+      "Nyx Live navigation"
+    ],
+    "description": "Verifies that planner drafts avoid a real saved appointment and save only on approval.",
+    "setup": [
+      "Create an open task named QA Prepare Lesson",
+      "Create a Calendar event named QA Appointment on 2030-01-15 at 09:00"
+    ],
+    "steps": [
+      "Open Ask Nyx and the Daily focus planner",
+      "Set date to 2030-01-15, start to 09:00, hours to 4 and focus minutes to 45",
+      "Generate a draft schedule and verify no proposed block overlaps 09:00\u201310:00",
+      "Verify no focus event was saved before approval",
+      "Approve the first proposed session",
+      "Open Calendar and verify the focus session has the approved start time",
+      "Reload and verify that session remains",
+      "Open Nyx Live and verify the saved event is available"
+    ],
+    "expected": "The existing appointment is respected, draft sessions do not save automatically, and one approved session persists with the correct time."
+  },
+  {
+    "name": "Use conversation context and explicitly approve an assistant action",
+    "viewport": "desktop",
+    "covers": [
+      "AI generation",
+      "conversation continuity",
+      "approved task actions",
+      "idempotent approvals",
+      "dismissed actions",
+      "assistant completion feedback",
+      "saved-data insights"
+    ],
+    "description": "Checks useful AI output and a durable action whose approval cannot duplicate it.",
+    "steps": [
+      "Open Ask Nyx and start a New conversation",
+      "Ask: Create a task named QA Confirm Private Lesson. Do not save it until I approve",
+      "Verify a proposed task appears with Approve & save and Dismiss controls",
+      "Verify it is described as a proposal and is not claimed saved",
+      "Approve the task and verify Saved is shown instead of an active approve button",
+      "Open Organize and verify QA Confirm Private Lesson exists once",
+      "Return to Ask Nyx and ask: What task did I just ask you to create?",
+      "Verify Nyx refers to the private lesson task using conversation context",
+      "Open Smart briefing and generate the saved-data financial snapshot"
+    ],
+    "expected": "Nyx provides contextual replies, an explicitly approved task is saved once, and the briefing clearly identifies recorded data rather than a connected bank balance."
+  },
+  {
+    "name": "Back up and restore private records without duplication",
+    "viewport": "desktop",
+    "covers": [
+      "complete backup export",
+      "profile backup",
+      "Nyx memory CRUD",
+      "connection-request backup",
+      "repeatable restore",
+      "restore confirmation",
+      "legacy backup support",
+      "invoices",
+      "debt simulator non-amortization",
+      "clients",
+      "reports and CSV exports"
+    ],
+    "description": "Verifies the complete backup and repeatable restore workflow with durable private data.",
+    "setup": [
+      "Save a Nyx Memory preference: QA I prefer morning focus sessions",
+      "Add a pending Gmail connection request labelled QA Personal Email"
+    ],
+    "steps": [
+      "Download a backup using Download backup",
+      "Inspect the downloaded JSON and verify version 4 plus data, profile, memories and connectionRequests",
+      "Restore that downloaded backup and confirm the restore",
+      "Verify existing records are reported as already present",
+      "Restore the same downloaded backup again and verify record counts do not increase",
+      "Verify the saved memory and pending email request remain available",
+      "Open Debt and add a 10000 balance debt with 30 APR and zero monthly payment, then set extra monthly payment to zero",
+      "Verify the simulator states that payoff is not reached within 50 years rather than presenting a debt-free date"
+    ],
+    "expected": "Backups contain profile and memories, repeat restores do not duplicate records, connection requests stay unconnected, and unpayable debt is not shown as paid off."
+  },
+  {
+    "name": "Recover from assistant errors and clear private state on mobile sign-out",
+    "viewport": "mobile",
+    "covers": [
+      "mobile navigation",
+      "AI failure and retry",
+      "retained message after failure",
+      "voice settings",
+      "microphone consent",
+      "receipt OCR",
+      "atomic receipt save",
+      "notification guidance",
+      "connection consent",
+      "inactive billing",
+      "sign-out private state cleanup",
+      "anonymous access denial"
+    ],
+    "description": "Verifies a visible AI failure, accessible mobile controls and private-state cleanup.",
+    "qa_faults": [
+      {
+        "method": "POST",
+        "path": "/api/assistant",
+        "status": 503,
+        "body_json": {
+          "error": "QA temporary assistant failure"
+        }
+      }
+    ],
+    "steps": [
+      "Sign in and open Ask Nyx through the mobile navigation",
+      "Send the message QA Help me plan today",
+      "Verify a visible error appears and the message remains available to retry",
+      "Open Voice settings and verify Preview voice, neural voice choice and a text alternative are available",
+      "Verify the microphone does not start without tapping it",
+      "Open Settings and confirm connections are described as pending setup and billing as inactive",
+      "Open Receipts and upload a small readable test receipt image with merchant QA Cafe and total 10.00; verify extracted merchant and total are shown",
+      "Save the scanned receipt and verify exactly one matching transaction appears in Money",
+      "Open More, try Enable notifications, and verify either enabled status or actionable browser/device guidance appears",
+      "Lock Novyx now and verify the sign-in screen appears without the previous reply, form content or workspace",
+      "Sign in again and verify the previous failed message is not prefilled"
+    ],
+    "expected": "The AI failure is visible and retryable, mobile controls remain usable, unconnected capabilities are represented honestly, and signing out clears private in-memory state."
+  }
+]
