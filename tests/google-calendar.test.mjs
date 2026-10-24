@@ -141,6 +141,34 @@ test('missing credentials and anonymous access fail without a fabricated connect
   assert.equal(googleCalls.length, 0);
 });
 
+test('token credential rejection is not reported as expired user authorization', async () => {
+  const started = await call('POST', 'begin');
+  globalThis.fetch = async () => response({ error: 'invalid_client', error_description: fixtures.secret }, 401);
+  const result = await call('POST', 'complete', {
+    state: new URL(started.data.authorizationUrl).searchParams.get('state'),
+    code: 'TEST_ONLY_ONE_TIME_CODE',
+  });
+  assert.equal(result.statusCode, 503);
+  assert.match(result.data.error, /app credentials/);
+  assert.doesNotMatch(JSON.stringify(result.data), new RegExp(fixtures.secret));
+  assert.equal((await call('GET', 'status')).data.connected, false);
+});
+
+test('invalid sign-in code offers a fresh connection and permits retry', async () => {
+  const started = await call('POST', 'begin');
+  tokenError = { error: 'invalid_grant' };
+  const result = await call('POST', 'complete', {
+    state: new URL(started.data.authorizationUrl).searchParams.get('state'),
+    code: 'TEST_ONLY_EXPIRED_CODE',
+  });
+  assert.equal(result.statusCode, 401);
+  assert.match(result.data.error, /one-time sign-in code/);
+  assert.equal((await call('GET', 'status')).data.connected, false);
+  tokenError = null;
+  await connect();
+  assert.equal((await call('GET', 'status')).data.connected, true);
+});
+
 test('OAuth pins redirect URI, uses PKCE and encrypts tokens without returning them', async () => {
   const { started, result } = await connect();
   const url = new URL(started.data.authorizationUrl);

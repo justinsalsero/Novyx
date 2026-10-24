@@ -162,9 +162,26 @@ async function googleJson(url: string, options: RequestInit = {}) {
   }
   const body = (await response.json().catch(() => ({}))) as RecordItem;
   if (!response.ok) {
-    if (response.status === 401 || body.error === 'invalid_grant')
+    if (url === TOKEN_URL &&
+        (body.error === 'invalid_client' || body.error === 'unauthorized_client' ||
+         body.error === 'deleted_client' || response.status === 401))
       throw new CalendarError(
-        'Google authorization expired or was revoked. Disconnect and connect again.',
+        'Google rejected Novyx app credentials. The app owner must check that GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET belong to the same enabled Web application client, then start a fresh connection.',
+        503,
+      );
+    if (body.error === 'invalid_grant') {
+      const isSignIn = options.body instanceof URLSearchParams &&
+        options.body.get('grant_type') === 'authorization_code';
+      throw new CalendarError(
+        isSignIn
+          ? 'Google rejected this one-time sign-in code. Close old Google sign-in tabs, return to Connections, and select Connect Google Calendar to start again. Complete the new link promptly without refreshing the callback page.'
+          : 'Google authorization expired or was revoked. Disconnect and connect again.',
+        401,
+      );
+    }
+    if (response.status === 401)
+      throw new CalendarError(
+        'Google rejected the saved access token. Disconnect and connect Google Calendar again.',
         401,
       );
     if (response.status === 403)

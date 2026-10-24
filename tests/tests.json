@@ -48,7 +48,7 @@
     "steps": [
       "Open Ask Nyx and the Daily focus planner",
       "Set date to 2030-01-15, start to 09:00, hours to 4 and focus minutes to 45",
-      "Generate a draft schedule and verify no proposed block overlaps 09:00\u201310:00",
+      "Generate a draft schedule and verify no proposed block overlaps 09:00–10:00",
       "Verify no focus event was saved before approval",
       "Approve the first proposed session",
       "Open Calendar and verify the focus session has the approved start time",
@@ -135,7 +135,8 @@
       "Google Calendar missing-configuration status",
       "GET /api/google-calendar/status",
       "POST /api/google-calendar/begin",
-      "Google Calendar account owner setup guardrail"
+      "Google Calendar account owner setup guardrail",
+      "Google Calendar actionable authorization errors"
     ],
     "description": "Verifies a visible AI failure, accessible mobile controls and private-state cleanup.",
     "qa_faults": [
@@ -145,6 +146,14 @@
         "status": 503,
         "body_json": {
           "error": "QA temporary assistant failure"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/google-calendar/begin",
+        "status": 503,
+        "body_json": {
+          "error": "Google rejected Novyx app credentials. Check the configured OAuth client."
         }
       }
     ],
@@ -156,7 +165,7 @@
       "Verify the microphone does not start without tapping it",
       "Open Settings and confirm connections are described as pending setup and billing as inactive",
       "Open Banking & Email and the Google Calendar section; when app credentials are not configured, verify App owner setup required, expand the setup details, and verify the exact authorized redirect URI is shown",
-      "Choose Connect Google Calendar; without credentials, verify a clear configuration message appears and the calendar remains unconnected",
+      "Choose Connect Google Calendar and verify the injected app-credentials error is visible and the calendar remains unconnected",
       "Open Receipts and upload a small readable test receipt image with merchant QA Cafe and total 10.00; verify extracted merchant and total are shown",
       "Save the scanned receipt and verify exactly one matching transaction appears in Money",
       "Open More, try Enable notifications, and verify either enabled status or actionable browser/device guidance appears",
